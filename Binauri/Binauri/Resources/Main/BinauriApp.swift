@@ -11,7 +11,7 @@ import SwiftUI
 struct BinauriApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+        TabBar()
         }
     }
 }
