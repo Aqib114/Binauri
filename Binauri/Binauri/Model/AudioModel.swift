@@ -6,12 +6,15 @@
 //
 
 import SwiftUI
+import AVFoundation
 
 struct AudioNode: Identifiable {
     let id = UUID()
     let name: String
     let imageName: String
     var location: CGPoint
+    let playerNode = AVAudioPlayerNode()
+    var audioFile: AVAudioFile? = nil
 }
 
 struct DraggingItem {
