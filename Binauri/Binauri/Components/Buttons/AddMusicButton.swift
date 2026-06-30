@@ -10,13 +10,23 @@ import SwiftUI
 struct AddMusicButton: View {
     let name: String
     let icon: String
-    var imageSize: CGFloat = 22
-    var textSize: CGFloat = 10
-    var imageColor: Color = .white
-    var textColor: Color = .gray
+    var imageSize: CGFloat
+    var textSize: CGFloat
+    var imageColor: Color
+    var textColor: Color
     var onDragChanged: (String, String, CGPoint) -> Void
     var onDragEnded: (CGPoint) -> Void
     
+    init(name: String, icon: String, imageSize: CGFloat = 22, textSize: CGFloat = 10, imageColor: Color = .white, textColor: Color = .gray, onDragChanged: @escaping (String, String, CGPoint) -> Void, onDragEnded: @escaping (CGPoint) -> Void) {
+        self.name = name
+        self.icon = icon
+        self.imageSize = imageSize
+        self.textSize = textSize
+        self.imageColor = imageColor
+        self.textColor = textColor
+        self.onDragChanged = onDragChanged
+        self.onDragEnded = onDragEnded
+    }
     var body: some View {
         VStack(spacing: 6) {
             Image(systemName: icon)
