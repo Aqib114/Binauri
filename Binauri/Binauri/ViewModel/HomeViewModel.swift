@@ -46,7 +46,7 @@ class HomeViewModel: ObservableObject {
             try audioEngine.start()
         }
         catch {
-            print("Audio Engine start nahi ho saka: \(error.localizedDescription)")
+            print("Audio Engine can't be started: \(error.localizedDescription)")
         }
     }
     private func convertToSpatialPosition(from localPoint: CGPoint) -> AVAudio3DVector {
@@ -63,7 +63,7 @@ class HomeViewModel: ObservableObject {
     private func playSpatialAudio(for node: AudioNode) {
         let filename = node.name.lowercased()
         guard let url = Bundle.main.url(forResource: filename, withExtension: "mp3") else {
-            print("Sound file nahi mili: \(filename).mp3")
+            print("Sound file not found : \(filename).mp3")
             return
         }
         do {
@@ -111,8 +111,6 @@ class HomeViewModel: ObservableObject {
                     let newNode = AudioNode(name: item.name, imageName: item.imageName, location: localPoint)
                     activeNodes.append(newNode)
                     playSpatialAudio(for: newNode)
-                   
-                    
                     
                 }
             }
