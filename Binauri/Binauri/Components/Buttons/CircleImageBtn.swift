@@ -8,13 +8,22 @@ import SwiftUI
 
 struct CircleImageBtn: View {
     let icon: String
+    var action: (() -> Void)? = nil
+
     var body: some View {
-        ZStack {
-            Circle().fill(Color.white.opacity(0.15))
-                .frame(width: 38, height: 38)
-            Image(systemName: icon)
-                .foregroundColor(.white)
-                .font(.footnote)
+        Button {
+            action?()
+        } label: {
+            ZStack {
+                Circle()
+                    .fill(Color.white.opacity(0.15))
+                    .frame(width: 38, height: 38)
+
+                Image(systemName: icon)
+                    .foregroundColor(.white)
+                    .font(.footnote)
+            }
         }
+        .buttonStyle(.plain)
     }
 }
