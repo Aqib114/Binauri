@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct HomeView : View {
-    @State private var viewModel = HomeViewModel()
+    @StateObject var viewModel = HomeViewModel()
     
     var body: some View {
         ZStack {
@@ -27,7 +27,10 @@ struct HomeView : View {
                     Text("seth b * 2Hz")
                         .foregroundStyle(.gray)
                     Spacer()
-                    CircleImageBtn(icon: "play.fill")
+                    CircleImageBtn(icon: viewModel.isPlaying ? "pause.fill" : "play.fill"){
+                        viewModel.togglePlayPause()
+                        
+                    }
                 }
                 .padding(.top, 5)
                 Spacer()
@@ -37,17 +40,25 @@ struct HomeView : View {
                         .stroke(viewModel.isDraggingActive ? Color.purple.opacity(0.5) : .clear, lineWidth: 1)
                         .frame(width: viewModel.outerRadius * 2, height: viewModel.outerRadius * 2)
                     ZStack {
-                        Image(systemName: "cone.fill")
-                            .resizable()
-                            .opacity(0.3)
-                            .foregroundStyle(.white)
-                            .frame(width: 140, height: 190)
-                            .rotationEffect(.degrees(180))
-                            .offset(y: -105)
-                        Image(systemName: "person.fill")
-                            .resizable()
-                            .foregroundStyle(.white)
-                            .frame(width: 30, height: 30)
+                        if viewModel.isDraggingActive {
+                            Image(systemName: "cone.fill")
+                                .resizable()
+                                .opacity(0.3)
+                                .foregroundStyle(.white)
+                                .frame(width: 140, height: 190)
+                                .rotationEffect(.degrees(180))
+                                .offset(y: -105)
+                            
+                            Image(systemName: "person.fill")
+                                .resizable()
+                                .foregroundStyle(.white)
+                                .frame(width: 30, height: 30)
+                           
+                        } else {
+                            Circle()
+                                .fill(Color.purple.opacity(0.8))
+                                .frame(width: 12, height: 12)
+                        }
                     }
                     .position(viewModel.radarCenter)
                     if viewModel.isDraggingFromBottom && viewModel.radarGlobalFrame.contains(viewModel.dragPosition) {
@@ -79,9 +90,11 @@ struct HomeView : View {
                             .gesture(
                                 DragGesture(coordinateSpace: .local)
                                     .onChanged { value in
+                                        viewModel.isMovingRadarNode = true
                                         viewModel.updateNodeLocation(id: node.id, to: value.location)
                                     }
                                     .onEnded { value in
+                                        viewModel.isMovingRadarNode = false
                                         viewModel.checkAndRemoveNode(id: node.id, finalLocation: value.location)
                                     }
                             )
@@ -94,17 +107,17 @@ struct HomeView : View {
                     GeometryReader { geo in
                         Color.clear
                             .onAppear { viewModel.radarGlobalFrame = geo.frame(in: .global) }
-                            .onChange(of: geo.frame(in: .global)) { oldVal, newVal in
-                                viewModel.radarGlobalFrame = newVal
+                            .onChange(of: geo.frame(in: .global)) { newValue in
+                                viewModel.radarGlobalFrame = newValue
                             }
                     }
                 )
                 Spacer()
                 HStack(spacing: 30) {
-                    AddMusicButton(name: "Cardio", icon: "figure.mixed.cardio", onDragChanged: viewModel.handleDrag, onDragEnded: viewModel.handleDragEnd)
-                    AddMusicButton(name: "Tornado", icon: "tornado.circle.fill", onDragChanged: viewModel.handleDrag, onDragEnded: viewModel.handleDragEnd)
-                    AddMusicButton(name: "Fire", icon: "fire.extinguisher.fill", onDragChanged: viewModel.handleDrag, onDragEnded: viewModel.handleDragEnd)
-                    AddMusicButton(name: "Music", icon: "music.microphone", onDragChanged: viewModel.handleDrag, onDragEnded: viewModel.handleDragEnd)
+                    AddMusicButton(name: "forest", icon: "figure.mixed.cardio", onDragChanged: viewModel.handleDrag, onDragEnded: viewModel.handleDragEnd)
+                    AddMusicButton(name: "pad", icon: "tornado.circle.fill", onDragChanged: viewModel.handleDrag, onDragEnded: viewModel.handleDragEnd)
+                    AddMusicButton(name: "rain", icon: "fire.extinguisher.fill", onDragChanged: viewModel.handleDrag, onDragEnded: viewModel.handleDragEnd)
+                    AddMusicButton(name: "stream", icon: "music.microphone", onDragChanged: viewModel.handleDrag, onDragEnded: viewModel.handleDragEnd)
                 }
                 .padding(.bottom, 15)
             }
