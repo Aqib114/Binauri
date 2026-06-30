@@ -4,6 +4,7 @@
 //
 //  Created by Aqib Mehmood on 23/06/2026.
 //
+
 import SwiftUI
 
 struct HomeView : View {
@@ -32,7 +33,8 @@ struct HomeView : View {
                 Spacer()
                 ZStack {
                     Circle()
-                        .stroke(Color.purple.opacity(0.5), lineWidth: 1)
+                        .fill(viewModel.isDraggingActive ? .gray.opacity(0.15) : .clear)
+                        .stroke(viewModel.isDraggingActive ? Color.purple.opacity(0.5) : .clear, lineWidth: 1)
                         .frame(width: viewModel.outerRadius * 2, height: viewModel.outerRadius * 2)
                     ZStack {
                         Image(systemName: "cone.fill")
@@ -52,7 +54,7 @@ struct HomeView : View {
                         let tempDistance = viewModel.getDistance(from: viewModel.currentDraggingLocalPoint)
                         if tempDistance <= viewModel.outerRadius {
                             Circle()
-                                .stroke(Color.purple.opacity(0.6), lineWidth: 1.5)
+                                .stroke(Color.white.opacity(0.4), lineWidth: 1.5)
                                 .frame(width: tempDistance * 2, height: tempDistance * 2)
                                 .position(viewModel.radarCenter)
                         }
@@ -61,16 +63,18 @@ struct HomeView : View {
                         let nodeDistance = viewModel.getDistance(from: node.location)
                         ZStack {
                             Circle()
-                                .stroke(Color.purple.opacity(0.5), lineWidth: 1)
+                                .stroke(Color.white.opacity(0.4), lineWidth: 1)
                                 .frame(width: nodeDistance * 2, height: nodeDistance * 2)
                                 .position(viewModel.radarCenter)
                             VStack(spacing: 2) {
-                                Image(systemName: node.imageName).font(.footnote)
-                                Text(node.name).font(.system(size: 10))
+                                Image(systemName: node.imageName)
+                                    .resizable()
+                                    .font(.footnote)
+                                    .frame(width: 20, height: 20)
                             }
                             .foregroundColor(.white)
-                            .frame(width: 50, height: 50)
-                            .background(Circle().fill(Color.gray.opacity(0.2)))
+                            .frame(width: 40, height: 40)
+                            .background(Circle().fill(Color.white.opacity(0.1)))
                             .position(node.location)
                             .gesture(
                                 DragGesture(coordinateSpace: .local)
@@ -108,7 +112,6 @@ struct HomeView : View {
             if viewModel.isDraggingFromBottom, let item = viewModel.currentDraggingItem {
                 VStack(spacing: 4) {
                     Image(systemName: item.imageName).font(.title3)
-                    Text(item.name).font(.caption2)
                 }
                 .foregroundColor(.white)
                 .frame(width: 50, height: 50)
@@ -120,6 +123,7 @@ struct HomeView : View {
         .background(Color.black.ignoresSafeArea())
     }
 }
+
 #Preview {
-    HomeView()
-}
+        HomeView()
+    }
