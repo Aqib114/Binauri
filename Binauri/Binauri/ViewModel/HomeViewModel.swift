@@ -15,7 +15,10 @@ class HomeViewModel: ObservableObject {
     @Published var isDraggingFromBottom: Bool = false
     @Published var radarGlobalFrame: CGRect = .zero
     @Published var isMovingRadarNode: Bool = false
-    @Published var isPlaying = false
+    
+    private var tempDraggingNode: AudioNode?
+    private var playerNodes: [UUID: AVAudioPlayerNode] = [:]
+    private var isTempAudioPlaying = false
     
     let outerRadius: CGFloat = 200
     let radarCenter = CGPoint(x: 200, y: 200)
@@ -25,9 +28,6 @@ class HomeViewModel: ObservableObject {
     
     var isDraggingActive: Bool {
         isDraggingFromBottom || isMovingRadarNode
-    }
-    var isGhostInsideRadar: Bool {
-        radarGlobalFrame.contains(dragPosition) && getDistance(from: currentDraggingLocalPoint) <= outerRadius
     }
     var currentDraggingLocalPoint: CGPoint {
         let localX = dragPosition.x - radarGlobalFrame.minX
@@ -40,12 +40,13 @@ class HomeViewModel: ObservableObject {
     private func setupSpatialAudioEngine() {
         audioEngine.attach(environmentNode)
         environmentNode.listenerPosition = AVAudio3DVector(x: 0, y: 0, z: 0)
-        environmentNode.listenerAngularOrientation = AVAudio3DAngularOrientation(yaw: 0, pitch: 0, roll: 0)
+        environmentNode.listenerAngularOrientation = AVAudio3DAngularOrientation(
+            yaw: 0, pitch: 0, roll: 0
+        )
         audioEngine.connect(environmentNode, to: audioEngine.outputNode, format: nil)
         do {
             try audioEngine.start()
-        }
-        catch {
+        } catch {
             print("Audio Engine can't be started: \(error.localizedDescription)")
         }
     }
@@ -63,77 +64,110 @@ class HomeViewModel: ObservableObject {
     private func playSpatialAudio(for node: AudioNode) {
         let filename = node.name.lowercased()
         guard let url = Bundle.main.url(forResource: filename, withExtension: "mp3") else {
-            print("Sound file not found : \(filename).mp3")
+            print("Sound file not found: \(filename).mp3")
             return
         }
         do {
             let file = try AVAudioFile(forReading: url)
-            audioEngine.attach(node.playerNode)
-            audioEngine.connect(node.playerNode, to: environmentNode, format: file.processingFormat)
-            node.playerNode.renderingAlgorithm = .sphericalHead
-            node.playerNode.position = convertToSpatialPosition(from: node.location)
-            node.playerNode.scheduleFile(file, at: nil, completionHandler: nil)
-            if isPlaying {
-                node.playerNode.play()
+            let bufferFormat = file.processingFormat
+            let bufferFrameCount = AVAudioFrameCount(file.length)
+            guard let buffer = AVAudioPCMBuffer(pcmFormat: bufferFormat, frameCapacity: bufferFrameCount) else {
+                print("Failed to create PCM buffer for \(filename)")
+                return
             }
-        }
-        catch {
+            try file.read(into: buffer)
+            let player = AVAudioPlayerNode()
+            playerNodes[node.id] = player
+            audioEngine.attach(player)
+            audioEngine.connect(player, to: environmentNode, format: bufferFormat)
+            player.renderingAlgorithm = .sphericalHead
+            player.position = convertToSpatialPosition(from: node.location)
+            player.scheduleBuffer(buffer, at: nil, options: .loops, completionHandler: nil)
+            player.play()
+            
+        } catch {
             print("Audio Node load error: \(error)")
         }
     }
-    func togglePlayPause() {
-        if isPlaying {
-            activeNodes.forEach { node in
-                node.playerNode.pause()
-            }
-        }
-        else {
-            activeNodes.forEach { node in
-                node.playerNode.play()
-            }
-        }
-        isPlaying.toggle()
+    func stopSpatialAudio(for node: AudioNode) {
+        guard let player = playerNodes[node.id] else { return }
+        player.stop()
+        audioEngine.detach(player)
+        playerNodes.removeValue(forKey: node.id)
+    }
+    func updateSpatialAudioPosition(for node: AudioNode?) {
+        guard let node = node,
+              let player = playerNodes[node.id] else { return }
+        
+        player.position = convertToSpatialPosition(from: node.location)
     }
     func handleDrag(name: String, icon: String, globalLocation: CGPoint) {
-        
         if !isDraggingFromBottom {
             isDraggingFromBottom = true
             currentDraggingItem = DraggingItem(name: name, imageName: icon)
+            tempDraggingNode = AudioNode(name: name,imageName: icon,location: currentDraggingLocalPoint)
         }
         dragPosition = globalLocation
+        let localPoint = currentDraggingLocalPoint
+        tempDraggingNode?.location = localPoint
+        updateSpatialAudioPosition(for: tempDraggingNode)
+        let insideRadar = getDistance(from: localPoint) <= outerRadius
+        if insideRadar {
+            if !isTempAudioPlaying, let temp = tempDraggingNode {
+                playSpatialAudio(for: temp)
+                isTempAudioPlaying = true
+            }
+        } else {
+            if isTempAudioPlaying, let temp = tempDraggingNode {
+                stopSpatialAudio(for: temp)
+                isTempAudioPlaying = false
+            }
+        }
     }
     func handleDragEnd(globalLocation: CGPoint) {
         isDraggingFromBottom = false
-        if radarGlobalFrame.contains(globalLocation) {
-            let localPoint = currentDraggingLocalPoint
-            if getDistance(from: localPoint) <= outerRadius {
-                if let item = currentDraggingItem {
-                    let newNode = AudioNode(name: item.name, imageName: item.imageName, location: localPoint)
-                    activeNodes.append(newNode)
-                    playSpatialAudio(for: newNode)
-                    
-                }
-            }
+        defer {
+            tempDraggingNode = nil
+            currentDraggingItem = nil
+            isTempAudioPlaying = false
         }
-        currentDraggingItem = nil
+        guard radarGlobalFrame.contains(globalLocation) else {
+            if let temp = tempDraggingNode {
+                stopSpatialAudio(for: temp)
+            }
+            return
+        }
+        let localPoint = currentDraggingLocalPoint
+        guard getDistance(from: localPoint) <= outerRadius else {
+            if let temp = tempDraggingNode {
+                stopSpatialAudio(for: temp)
+            }
+            return
+        }
+        guard let item = currentDraggingItem else { return }
+        if let temp = tempDraggingNode {
+            stopSpatialAudio(for: temp)
+        }
+        let newNode = AudioNode(name: item.name,imageName: item.imageName,location: localPoint)
+        activeNodes.append(newNode)
+        playSpatialAudio(for: newNode)
     }
     func updateNodeLocation(id: UUID, to newLocation: CGPoint) {
         if let index = activeNodes.firstIndex(where: { $0.id == id }) {
             activeNodes[index].location = newLocation
-            let spatialPos = convertToSpatialPosition(from: newLocation)
-            activeNodes[index].playerNode.position = spatialPos
+            playerNodes[id]?.position = convertToSpatialPosition(from: newLocation)
         }
     }
     func checkAndRemoveNode(id: UUID, finalLocation: CGPoint) {
         if getDistance(from: finalLocation) > outerRadius {
-            if let node = activeNodes.firstIndex(where: { $0.id == id }) {
-                activeNodes[node].playerNode.stop()
-                audioEngine.detach(activeNodes[node].playerNode)
-                withAnimation(.easeOut(duration: 0.2)) {
-                    _ = activeNodes.remove(at: node)
+            if let index = activeNodes.firstIndex(where: { $0.id == id }) {
+                playerNodes[id]?.stop()
+                if let player = playerNodes[id] {
+                    audioEngine.detach(player)
                 }
-                if activeNodes.isEmpty {
-                    isPlaying = false
+                playerNodes.removeValue(forKey: id)
+                withAnimation(.easeOut(duration: 0.2)) {
+                    activeNodes.remove(at: index)
                 }
             }
         }

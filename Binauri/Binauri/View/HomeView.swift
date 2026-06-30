@@ -27,8 +27,8 @@ struct HomeView : View {
                     Text("seth b * 2Hz")
                         .foregroundStyle(.gray)
                     Spacer()
-                    CircleImageBtn(icon: viewModel.isPlaying ? "pause.fill" : "play.fill"){
-                        viewModel.togglePlayPause()
+                    CircleImageBtn(icon: "play.fill"){
+//                        viewModel.togglePlayPause()
                         
                     }
                 }
